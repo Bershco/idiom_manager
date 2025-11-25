@@ -1,0 +1,63 @@
+# ------------------------------
+# Python Bytecode & Caches
+# ------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Compiled Tk/Tcl
+*.tcl~
+*.tk~
+
+# Virtual Environments
+env/
+venv/
+.venv/
+
+# Jupyter artifacts (in case you use them)
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Build / Distribution
+build/
+dist/
+*.egg-info/
+
+# ------------------------------
+# Your Project-Specific Ignores
+# ------------------------------
+
+# Local SQLite database in Google Drive Desktop (Windows: G:)
+# Don't commit your local DB — each team member has their own.
+shared_idioms.db
+*.sqlite
+*.db
+
+# If someone accidentally places the DB inside your project dir:
+idioms.db
+local.db
+
+# Exported CSVs (optional — remove if you *want* CSVs committed)
+exports/
+*.csv
+
+# Tkinter settings caches (rare)
+*.tclcache
+
+# Windows execution artifacts
+*.exe
+*.bat
+*.cmd
