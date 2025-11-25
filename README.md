@@ -1,47 +1,46 @@
 ﻿# Idiom Manager (Hebrew ↔ English)
 
-A lightweight Python application for collecting, managing, and sharing Hebrew↔English idioms across a small team.  
-Supports both a **modern GUI** and a **simple CLI**, automatic language detection, similarity checking, variants, and multi-user sync using **Google Drive Desktop**.
+A lightweight Python application for collecting, managing, and sharing Hebrew↔English idioms across a small team.
+
+Features both a **modern GUI** and a **simple CLI**, automatic language detection, similarity matching, variant management, and shared storage via **Google Drive Desktop** — no tokens, no APIs, no authentication logic.
 
 ---
 
 # ✨ Features
 
-### 🔤 Bilingual Idiom Storage
-- Store Hebrew ↔ English idiom pairs  
-- Order-independent — automatically detects which text is Hebrew and which is English  
-- Fully Unicode-safe  
+### 🔤 Automatic Hebrew ↔ English Detection
+Order does not matter — the system identifies which text is Hebrew and which is English.
 
-### 🔍 Smart Similarity Detection
-- Detects similar idioms using rapid fuzzy matching  
-- Prompts to save new entries as **variants** of existing idioms  
-- Supports:
-  - Verb tense variants  
-  - Spelling differences  
-  - Alternative idiom phrasing  
+### 🔍 Smart Similarity Recognition
+Detects:
+- Alternative idiom phrasings  
+- English tense variants  
+- Hebrew punctuation variants  
+- Extremely close idiomatic matches  
+
+Prompts for variant addition when needed.
 
 ### 📝 Variant Management
-- Hebrew variants  
-- English variants  
-- Linked to a canonical idiom pair  
+Each idiom can have multiple Hebrew variants and English variants, each properly linked to a single canonical idiom.
 
-### 💾 Persistent Shared Database
-- SQLite database stored in your **Google Drive Desktop folder**  
+### 💾 Shared SQLite DB (via Google Drive Desktop)
+- No server required  
+- No API keys  
+- No risk of data loss  
 - All teammates automatically stay in sync  
-- No API keys, tokens, or Google authentication required  
 
-### 🖥 GUI Application
-- Modern themed interface (Sun Valley look)  
-- Dark/Light mode toggle  
-- Full keyboard navigation (Tab + Enter)  
-- RTL Hebrew support  
-- Idiom addition, validation, and CSV export  
+### 🖥 Modern GUI
+- Sun Valley modern theme (light + dark)
+- Fully keyboard friendly (Tab + Enter)
+- Accurate RTL Hebrew display
+- CSV export
+- Error-safe idiom validation
 
-### 💻 CLI Tools Included
-- Continuous-input idiom loop  
-- Edit idioms  
-- Delete idioms  
-- Export CSV  
+### 💻 CLI Tools
+- Infinite input loop  
+- Editing  
+- Deletion  
+- CSV export
 
 ---
 
@@ -50,19 +49,20 @@ Supports both a **modern GUI** and a **simple CLI**, automatic language detectio
 ```
 idiom_manager/
 │
-├── idioms_gui.py         # Main GUI application
-├── idioms_loop.py        # CLI infinite input loop
-├── idioms_edit.py        # Edit existing idioms
-├── idioms_delete.py      # Delete idioms
-├── export_csv.py         # Export DB to CSV
+├── idioms_gui.py           # Main GUI app
+├── idioms_loop.py          # CLI infinite input loop
+├── idioms_edit.py          # Edit existing idioms
+├── idioms_delete.py        # Delete idioms
+├── export_csv.py           # CSV export tool
 │
-├── db.py                 # SQLite backend
-├── models.py             # Data models & helpers
-├── similarity.py         # RapidFuzz similarity logic
-├── util.py               # Hebrew/English detection & helpers
+├── db.py                   # SQLite backend
+├── models.py               # Data models
+├── similarity.py           # Fuzzy matching logic
+├── util.py                 # Language detection, helpers
 │
 ├── requirements.txt
 ├── README.md
+├── LICENSE
 │
 └── themes/
        sun-valley.tcl
@@ -71,157 +71,193 @@ idiom_manager/
 
 ---
 
-# ☁️ Google Drive Desktop Sync (Required for Teams)
+# ☁️ Google Drive Desktop Sync
 
-To share the SQLite idioms database automatically, the project stores it inside a shared folder synced with **Google Drive Desktop**.
+The idioms database (`idioms.db`) is stored in a **shared Google Drive folder** so all team members share the same database transparently.
 
-### 👉 Step 1 — Install Google Drive Desktop
+Below are separate instructions for:
 
-**Windows & macOS**  
-Download from:  
+---
+
+# 👑 **Setup for Project Manager (Roee)**
+
+### **1. Install Google Drive Desktop**
+Download:
 https://www.google.com/drive/download/
 
-### 👉 Step 2 — Sign in and enable “My Drive”
+Log in with your Google account.
 
-### 👉 Step 3 — Create a shared folder  
-Example recommended folder name:
+### **2. Create a new folder for the idiom database**
+Recommended name:
 
 ```
 shared_idioms
 ```
 
-Share it with your team via Google Drive.
+### **3. Share the folder with your team**
+Right-click the folder → **Share** → add their Gmail addresses.
 
-### 👉 Step 4 — Locate the folder on your system
+Give them **Editor** permissions.
 
-#### Windows (default):
+### **4. Locate the folder on your machine**
+
+On Windows (default):
 ```
 G:\My Drive\shared_idioms\
 ```
 
-#### macOS (default):
+On macOS:
 ```
 ~/Library/CloudStorage/GoogleDrive-<your-email>/My Drive/shared_idioms/
 ```
 
-#### Linux:
-Google Drive Desktop is unavailable.  
-Use `rclone`, `insync`, or a shared network directory.
+### **5. Place your database here**
+The app will automatically create the DB if it doesn’t yet exist.
 
-### 👉 Step 5 — The app automatically finds the DB  
-The app searches typical locations such as:
-
-- `G:\My Drive\shared_idioms\idioms.db`
-- `~/Google Drive/shared_idioms/idioms.db`
-- `~/My Drive/shared_idioms/idioms.db`
-
-### 👉 Optional: Manually override database folder
-
-Windows:
-```
-setx IDIOM_DB_DIR "D:\Another\Folder"
-```
-
-macOS/Linux:
-```
-export IDIOM_DB_DIR="/path/to/folder"
-```
+You’re done.  
+Your teammates now have a shared location to sync idioms.
 
 ---
 
-# ▶️ Installation & Setup
+# 👥 **Setup for Project Members (Teammates)**
 
-### 1. Clone the repository
+### **1. Install Google Drive Desktop**
+Download:
+https://www.google.com/drive/download/
+
+Sign in with the Google account that Roee invited.
+
+### **2. Accept the shared folder**
+You will receive an email + a Google Drive notification.
+
+Once accepted, the folder will appear inside:
+
+Windows:
 ```
-git clone https://github.com/<yourname>/idiom_manager.git
+G:\My Drive\shared_idioms\
+```
+
+macOS:
+```
+~/Library/CloudStorage/GoogleDrive-<your-email>/My Drive/shared_idioms/
+```
+
+### **3. Clone the project**
+```
+git clone <the repo URL>
 cd idiom_manager
 ```
 
-### 2. Create a virtual environment
+### **4. Create a virtual environment**
 
-**Windows:**
+Windows:
 ```
 python -m venv venv
 venv\Scripts\activate
 ```
 
-**macOS/Linux:**
+macOS/Linux:
 ```
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Install dependencies
+### **5. Install dependencies**
 ```
 pip install -r requirements.txt
 ```
 
----
-
-# 🖥 Running the App
-
-## GUI (Recommended)
+### **6. Launch the GUI**
 ```
 python idioms_gui.py
 ```
 
-Features:
-- RTL Hebrew support  
-- Automatic language detection  
-- Variant recognition  
-- Dark/Light mode  
-- Keyboard shortcuts (Tab + Enter)  
-- CSV export  
+The app will automatically detect the shared folder and use the synced database.
 
-## CLI Loop
+**No extra setup required.**
+
+---
+
+# ▶️ Running the App
+
+### **GUI (recommended)**
+```
+python idioms_gui.py
+```
+
+Supports:
+- Idiom insertion
+- Auto-language detection
+- Variant linking
+- Similarity alerts
+- Dark/light toggle
+- CSV export
+- Keyboard-only operation
+
+### **CLI Input Loop**
 ```
 python idioms_loop.py
 ```
 
-Format:
+Enter:
 ```
 Hebrew | English
 ```
 
-Exit:  
-`q`, `quit`, `exit`, `out`, Ctrl+C, Ctrl+D
-
-## Edit Idioms
+Exit with:
 ```
-python idioms_edit.py --id 3 --hebrew "..." --english "..."
+q, quit, exit, Ctrl+C, Ctrl+D
 ```
 
-## Delete Idioms
+### **Edit an idiom**
 ```
-python idioms_delete.py --id 12
+python idioms_edit.py --id 12 --hebrew "..." --english "..."
 ```
 
-## Export CSV
+### **Delete an idiom**
+```
+python idioms_delete.py --id 7
+```
+
+### **Export CSV**
 ```
 python export_csv.py
 ```
 
-CSV includes:
-- Hebrew idiom  
-- English idiom  
-- Hebrew variants  
-- English variants  
-- Timestamps  
+---
+
+# 🔧 Environment Variable Override (Optional)
+
+To manually force the database directory:
+
+Windows:
+```
+setx IDIOM_DB_DIR "D:\SomePath"
+```
+
+macOS/Linux:
+```
+export IDIOM_DB_DIR="/path/to/dir"
+```
 
 ---
 
 # 🤝 Team Usage Notes
 
-- All team members must sync the same Google Drive folder  
-- SQLite supports concurrent reads  
-- Avoid simultaneous writes at the exact same moment  
-- Conflicts are rare in small teams  
-- Perfect for dictionary-building or research annotation  
+- All team members must keep Google Drive running  
+- Concurrent reads are safe  
+- Concurrent writes are rare and SQLite handles them well  
+- Ideal for collaborative annotation or idiom collection  
 
 ---
 
-# 🙋 Contact
+# 📄 License
 
-For issues or suggestions, open a GitHub issue or pull request.
+This project is licensed under the **MIT License**.  
+See `LICENSE` for details.
 
+---
 
+# 🙋 Support
+
+For issues or contributions, please open a GitHub issue or pull request.
