@@ -79,7 +79,7 @@ Below are separate instructions for:
 
 ---
 
-# 👑 **Setup for Project Manager (Roee)**
+# 👑 **Setup for Project Manager**
 
 ### **1. Install Google Drive Desktop**
 Download:
@@ -125,7 +125,7 @@ Your teammates now have a shared location to sync idioms.
 Download:
 https://www.google.com/drive/download/
 
-Sign in with the Google account that Roee invited.
+Sign in with the Google account that the project manager invited.
 
 ### **2. Accept the shared folder**
 You will receive an email + a Google Drive notification.
@@ -261,3 +261,4 @@ See `LICENSE` for details.
 # 🙋 Support
 
 For issues or contributions, please open a GitHub issue or pull request.
+
