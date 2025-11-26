@@ -1,4 +1,6 @@
 ﻿
+# Idiom Manager (Hebrew ↔ English)
+
 A lightweight, Python-based CLI tool for collecting, managing, and sharing Hebrew–English idiom pairs within a team.  
 Designed for accuracy, multi-user collaboration, persistent storage, and long-term maintainability.
 
