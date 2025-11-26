@@ -1,33 +1,54 @@
-# idioms_edit.py
-
-import typer
+import argparse
 import db
+import settings
+from util import normalize_text
 
-app = typer.Typer()
 
-@app.command()
-def edit(id: int, hebrew: str = None, english: str = None):
-    conn = db.get_conn()
-    c = conn.cursor()
+def main():
+    parser = argparse.ArgumentParser(description="Edit an idiom by ID.")
+    parser.add_argument("--id", required=True, type=int, help="ID of idiom to edit")
 
-    row = c.execute("SELECT * FROM idioms WHERE id=?", (id,)).fetchone()
-    if not row:
-        typer.echo("ID not found.")
+    parser.add_argument("--idiom_en")
+    parser.add_argument("--idiom_he")
+    parser.add_argument("--translation_en")
+    parser.add_argument("--translation_he")
+    parser.add_argument("--half_en")
+    parser.add_argument("--half_he")
+    parser.add_argument("--off_en")
+    parser.add_argument("--off_he")
+
+    args = parser.parse_args()
+
+    db_dir = settings.get_db_dir()
+    if not db_dir:
+        print("ERROR: DB path not set. Run GUI once to choose folder.")
         return
 
-    new_hebrew = hebrew if hebrew else row["hebrew"]
-    new_english = english if english else row["english"]
+    db.set_db_path(db_dir)
+    db.init_db()
 
-    c.execute("""
-    UPDATE idioms
-    SET hebrew = ?, english = ?
-    WHERE id = ?
-    """, (new_hebrew, new_english, id))
+    row = db.get_idiom(args.id)
+    if not row:
+        print("ERROR: Idiom not found.")
+        return
 
-    conn.commit()
-    conn.close()
+    updated = db.update_idiom(
+        args.id,
+        idiom_en=normalize_text(args.idiom_en or row["idiom_en"]),
+        idiom_he=normalize_text(args.idiom_he or row["idiom_he"]),
+        translation_en=normalize_text(args.translation_en or row["translation_en"]),
+        translation_he=normalize_text(args.translation_he or row["translation_he"]),
+        half_en=normalize_text(args.half_en or row["half_en"]),
+        half_he=normalize_text(args.half_he or row["half_he"]),
+        off_en=normalize_text(args.off_en or row["off_en"]),
+        off_he=normalize_text(args.off_he or row["off_he"]),
+    )
 
-    typer.echo("Updated successfully.")
+    if updated:
+        print(f"Updated idiom #{args.id}")
+    else:
+        print("No changes applied.")
+
 
 if __name__ == "__main__":
-    app()
+    main()

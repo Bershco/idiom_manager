@@ -1,168 +1,265 @@
-# db.py
-
 import sqlite3
-import os
 from pathlib import Path
-from datetime import datetime
+from typing import List, Optional, Tuple, Dict
+
+# ---------------------------------------------------------
+#  DB PATH IS SET EXTERNALLY BY settings.py
+#  Every file importing db.py must call: set_db_path(directory)
+# ---------------------------------------------------------
+
+DB_PATH: Optional[Path] = None
 
 
-def detect_default_drive_path():
+# ---------------------------------------------------------
+#  PUBLIC SETTER
+# ---------------------------------------------------------
+def set_db_path(db_dir: str):
     """
-    Detect Google Drive Desktop folder on Windows or macOS.
-
-    Your setup:
-    Google Drive is mounted as G:\My Drive\
-
-    So we check for:
-        G:\My Drive
+    Call this once at startup to tell the DB module
+    where idioms.db is located.
     """
-
-    # Your actual confirmed Google Drive Desktop folder
-    my_drive = Path("G:/My Drive")
-    if my_drive.exists():
-        return my_drive / "shared_idioms" / "idioms.db"
-
-    # Fallbacks (optional, in case you or teammates have different setups)
-    google_drive_old = Path("G:/Google Drive")
-    if google_drive_old.exists():
-        return google_drive_old / "shared_idioms" / "idioms.db"
-
-    root_drive = Path("G:/")
-    if root_drive.exists():
-        return root_drive / "shared_idioms" / "idioms.db"
-
-    home_google = Path.home() / "Google Drive"
-    if home_google.exists():
-        return home_google / "shared_idioms" / "idioms.db"
-
-    home_my_drive = Path.home() / "My Drive"
-    if home_my_drive.exists():
-        return home_my_drive / "shared_idioms" / "idioms.db"
-
-    # Final fallback
-    return Path.home() / "shared_idioms" / "idioms.db"
+    global DB_PATH
+    p = Path(db_dir)
+    p.mkdir(parents=True, exist_ok=True)
+    DB_PATH = p / "idioms.db"
 
 
+# ---------------------------------------------------------
+#  INTERNAL HELPERS
+# ---------------------------------------------------------
+def _get_conn() -> sqlite3.Connection:
+    if DB_PATH is None:
+        raise RuntimeError("DB_PATH not set. Call set_db_path() before using db.py")
 
-CUSTOM_DB_DIR = os.getenv("IDIOM_DB_DIR")
-if CUSTOM_DB_DIR:
-    DB_PATH = Path(CUSTOM_DB_DIR) / "idioms.db"
-else:
-    DB_PATH = detect_default_drive_path()
-
-
-def get_conn():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+
+    # Improve reliability on Google Drive sync
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA foreign_keys = ON;")
+
     return conn
 
 
+# ---------------------------------------------------------
+#  SCHEMA INIT
+# ---------------------------------------------------------
 def init_db():
-    conn = get_conn()
-    c = conn.cursor()
+    conn = _get_conn()
+    cur = conn.cursor()
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS idioms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        hebrew TEXT NOT NULL,
-        english TEXT NOT NULL,
-        created_at TIMESTAMP NOT NULL
-    )
+    # Main idioms table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS idioms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+            idiom_en TEXT NOT NULL,
+            idiom_he TEXT NOT NULL,
+
+            translation_en TEXT NOT NULL,
+            translation_he TEXT NOT NULL,
+
+            half_en TEXT,
+            half_he TEXT,
+
+            off_en TEXT,
+            off_he TEXT
+        );
     """)
 
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS variants (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        idiom_id INTEGER NOT NULL,
-        lang TEXT NOT NULL CHECK(lang IN ('he', 'en')),
-        variant TEXT NOT NULL,
-        FOREIGN KEY(idiom_id) REFERENCES idioms(id)
-    )
+    # Variants linking table (bidirectional)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS variants_link (
+            idiom_id INTEGER NOT NULL,
+            variant_id INTEGER NOT NULL,
+
+            PRIMARY KEY (idiom_id, variant_id),
+
+            FOREIGN KEY (idiom_id) REFERENCES idioms(id) ON DELETE CASCADE,
+            FOREIGN KEY (variant_id) REFERENCES idioms(id) ON DELETE CASCADE
+        );
     """)
 
     conn.commit()
     conn.close()
 
 
-def insert_idiom(hebrew: str, english: str):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO idioms (hebrew, english, created_at) VALUES (?, ?, ?)",
-        (hebrew, english, datetime.utcnow())
-    )
+# ---------------------------------------------------------
+#  INSERT IDIOM
+# ---------------------------------------------------------
+def add_idiom(
+    *,
+    created_by: str,
+    idiom_en: str,
+    idiom_he: str,
+    translation_en: str,
+    translation_he: str,
+    half_en: Optional[str],
+    half_he: Optional[str],
+    off_en: Optional[str],
+    off_he: Optional[str],
+) -> int:
+    conn = _get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO idioms (
+            created_by,
+            idiom_en, idiom_he,
+            translation_en, translation_he,
+            half_en, half_he,
+            off_en, off_he
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    """, (
+        created_by,
+        idiom_en, idiom_he,
+        translation_en, translation_he,
+        half_en, half_he,
+        off_en, off_he
+    ))
+
+    new_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+# ---------------------------------------------------------
+#  VARIANT LINKING
+# ---------------------------------------------------------
+def add_variant_link(id1: int, id2: int):
+    """
+    Bidirectional linking:
+      (id1, id2) and (id2, id1)
+    """
+    conn = _get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT OR IGNORE INTO variants_link (idiom_id, variant_id)
+        VALUES (?, ?);
+    """, (id1, id2))
+
+    cur.execute("""
+        INSERT OR IGNORE INTO variants_link (idiom_id, variant_id)
+        VALUES (?, ?);
+    """, (id2, id1))
+
     conn.commit()
     conn.close()
 
 
-def insert_variant(idiom_id: int, variant_text: str, lang: str):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO variants (idiom_id, lang, variant) VALUES (?, ?, ?)",
-        (idiom_id, lang, variant_text)
-    )
-    conn.commit()
+def get_variants(idiom_id: int) -> List[int]:
+    conn = _get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT variant_id
+        FROM variants_link
+        WHERE idiom_id = ?;
+    """, (idiom_id,))
+
+    rows = cur.fetchall()
     conn.close()
 
+    return [r["variant_id"] for r in rows]
 
-def fetch_all_idioms():
-    """
-    Returns idioms with TWO grouped columns:
-    - hebrew_variants
-    - english_variants
-    """
 
-    conn = get_conn()
-    c = conn.cursor()
+# ---------------------------------------------------------
+#  GET IDIOM
+# ---------------------------------------------------------
+def get_idiom(idiom_id: int) -> Optional[Dict]:
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM idioms WHERE id = ?;", (idiom_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
-    query = """
-        SELECT 
-            idioms.id,
-            idioms.hebrew,
-            idioms.english,
-            idioms.created_at,
-            GROUP_CONCAT(CASE WHEN variants.lang='he' THEN variants.variant END, ', ') AS hebrew_variants,
-            GROUP_CONCAT(CASE WHEN variants.lang='en' THEN variants.variant END, ', ') AS english_variants
+
+# ---------------------------------------------------------
+#  GET ALL IDIOMS
+# ---------------------------------------------------------
+def get_all_idioms() -> List[Dict]:
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM idioms ORDER BY id;")
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------
+#  USER COUNT
+# ---------------------------------------------------------
+def count_user_idioms(username: str) -> int:
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) AS c
         FROM idioms
-        LEFT JOIN variants ON idioms.id = variants.idiom_id
-        GROUP BY idioms.id
-        ORDER BY idioms.id
-    """
-
-    rows = c.execute(query).fetchall()
+        WHERE created_by = ?;
+    """, (username,))
+    result = cur.fetchone()["c"]
     conn.close()
-    return rows
+    return result
 
 
-def find_exact_match(h: str, e: str):
-    conn = get_conn()
-    c = conn.cursor()
-    row = c.execute("SELECT * FROM idioms WHERE hebrew=? AND english=?", (h, e)).fetchone()
+# ---------------------------------------------------------
+#  DELETE IDIOM
+# ---------------------------------------------------------
+def delete_idiom(idiom_id: int) -> bool:
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM idioms WHERE id = ?;", (idiom_id,))
+    affected = cur.rowcount
+    conn.commit()
     conn.close()
-    return row
+    return affected > 0
 
 
-def find_by_hebrew(h: str):
-    conn = get_conn()
-    c = conn.cursor()
-    row = c.execute("SELECT * FROM idioms WHERE hebrew=?", (h,)).fetchone()
+# ---------------------------------------------------------
+#  EDIT IDIOM
+# ---------------------------------------------------------
+def update_idiom(
+    idiom_id: int,
+    *,
+    idiom_en: str,
+    idiom_he: str,
+    translation_en: str,
+    translation_he: str,
+    half_en: Optional[str],
+    half_he: Optional[str],
+    off_en: Optional[str],
+    off_he: Optional[str]
+) -> bool:
+    conn = _get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE idioms
+        SET
+            idiom_en = ?,
+            idiom_he = ?,
+            translation_en = ?,
+            translation_he = ?,
+            half_en = ?,
+            half_he = ?,
+            off_en = ?,
+            off_he = ?
+        WHERE id = ?;
+    """, (
+        idiom_en, idiom_he,
+        translation_en, translation_he,
+        half_en, half_he,
+        off_en, off_he,
+        idiom_id
+    ))
+
+    conn.commit()
+    affected = cur.rowcount
     conn.close()
-    return row
-
-
-def find_by_english(e: str):
-    conn = get_conn()
-    c = conn.cursor()
-    row = c.execute("SELECT * FROM idioms WHERE english=?", (e,)).fetchone()
-    conn.close()
-    return row
-
-
-def count_idioms():
-    conn = get_conn()
-    c = conn.cursor()
-    (count,) = c.execute("SELECT COUNT(*) FROM idioms").fetchone()
-    conn.close()
-    return count
+    return affected > 0

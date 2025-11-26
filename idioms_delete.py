@@ -1,29 +1,26 @@
-# idioms_delete.py
-
-import typer
+import argparse
 import db
+import settings
 
-app = typer.Typer()
 
-@app.command()
-def delete(id: int):
-    conn = db.get_conn()
-    c = conn.cursor()
+def main():
+    parser = argparse.ArgumentParser(description="Delete an idiom by ID.")
+    parser.add_argument("--id", required=True, type=int)
+    args = parser.parse_args()
 
-    row = c.execute("SELECT * FROM idioms WHERE id=?", (id,)).fetchone()
-    if not row:
-        typer.echo("ID not found.")
+    db_dir = settings.get_db_dir()
+    if not db_dir:
+        print("ERROR: DB path not set. Run GUI first.")
         return
 
-    confirm = typer.confirm(f"Delete idiom '{row['hebrew']} | {row['english']}'?")
-    if not confirm:
-        typer.echo("Cancelled.")
-        return
+    db.set_db_path(db_dir)
+    db.init_db()
 
-    c.execute("DELETE FROM idioms WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
-    typer.echo("Deleted successfully.")
+    if db.delete_idiom(args.id):
+        print(f"Deleted idiom #{args.id}")
+    else:
+        print("Idiom not found.")
+
 
 if __name__ == "__main__":
-    app()
+    main()
